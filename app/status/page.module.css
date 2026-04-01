@@ -1,0 +1,385 @@
+.main {
+  padding-top: 100px;
+  padding-bottom: 80px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 12px 0;
+}
+
+.subtitle { color: var(--text-secondary); font-size: 16px; }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 60px;
+}
+
+/* Search */
+.searchCard {
+  max-width: 700px;
+  margin: 0 auto 32px;
+  padding: 36px;
+}
+
+.searchTitle {
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.searchDesc {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.searchRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.searchRow .form-input {
+  font-family: 'Outfit', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.examples {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.exampleBtn {
+  background: rgba(0,180,216,0.08);
+  border: 1px solid rgba(0,180,216,0.25);
+  border-radius: 100px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exampleBtn:hover {
+  background: rgba(0,180,216,0.15);
+}
+
+/* Not Found */
+.notFound {
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 48px;
+}
+
+.notFound span { font-size: 48px; display: block; margin-bottom: 16px; }
+.notFound h3 { font-size: 22px; margin-bottom: 8px; }
+.notFound p { color: var(--text-secondary); margin-bottom: 24px; }
+
+/* Complaint Details */
+.complaintDetails {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.complaintHeader {
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.headerLeft { flex: 1; }
+
+.complaintId {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 1px;
+}
+
+.complaintMeta {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.headerRight {
+  flex-shrink: 0;
+}
+
+/* Progress */
+.progressCard {
+  padding: 32px;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.progressBarWrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  margin-bottom: 36px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* SLA Timeline */
+.slaTimeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  position: relative;
+}
+
+.slaStep {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  text-align: center;
+}
+
+.slaLine {
+  position: absolute;
+  top: 18px;
+  left: calc(-50%);
+  right: calc(50%);
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.slaLineDone {
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.slaDot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+  transition: var(--transition);
+}
+
+.slaDotDone {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 0 16px rgba(6, 214, 160, 0.4);
+}
+
+.slaDotCurrent {
+  background: rgba(0,180,216,0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 16px rgba(0, 180, 216, 0.3);
+  animation: currentPulse 2s ease-in-out infinite;
+}
+
+.slaDotOverdue {
+  background: rgba(239,35,60,0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@keyframes currentPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(0, 180, 216, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(0, 180, 216, 0.6); }
+}
+
+.slaInfo {
+  padding: 0 8px;
+}
+
+.slaLabel {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.currentBadge {
+  background: rgba(0, 180, 216, 0.15);
+  color: var(--primary);
+  border-radius: 100px;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.overdueBadge {
+  background: rgba(239, 35, 60, 0.15);
+  color: var(--danger);
+  border-radius: 100px;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.slaDate {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.slaNote {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Info Grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 0.8fr;
+  gap: 20px;
+}
+
+.infoCard {
+  padding: 24px;
+}
+
+.infoCard h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.infoDesc {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.infoMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoMetaItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.infoMetaItem span { color: var(--text-muted); }
+.infoMetaItem strong { text-transform: capitalize; }
+
+/* AI Verify */
+.aiVerify {}
+
+.aiVerifyScore {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.scoreRing { flex-shrink: 0; }
+
+.aiVerifyDetails {
+  flex: 1;
+}
+
+.aiVerifyStatus {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.aiVerifyReasoning {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.aiFeaturesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Location */
+.locationText {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.coords {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+@media (max-width: 768px) {
+  .infoGrid { grid-template-columns: 1fr; }
+  .slaTimeline { flex-direction: column; gap: 8px; }
+  .slaStep { flex-direction: row; align-items: flex-start; text-align: left; }
+  .slaLine { display: none; }
+  .complaintHeader { flex-direction: column; }
+  .searchCard { padding: 24px; }
+}

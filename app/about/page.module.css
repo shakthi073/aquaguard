@@ -1,0 +1,229 @@
+.main { padding-top: 100px; padding-bottom: 80px; }
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 60px 0 80px;
+}
+
+.heroTitle {
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 20px 0 24px;
+  line-height: 1.1;
+}
+
+.heroDesc {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+/* MV Grid */
+.mvGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 80px;
+}
+
+.mvCard {
+  padding: 32px;
+  text-align: center;
+}
+
+.mvIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.mvCard h3 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.mvCard p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* Sections */
+.section {
+  padding: 60px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.sectionDesc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 12px auto 0;
+  line-height: 1.7;
+}
+
+/* Process Flow */
+.processFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.processPhase {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.phaseNum {
+  font-family: 'Outfit', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 72px;
+  text-align: center;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  padding: 12px 0;
+  opacity: 0.7;
+}
+
+.phaseContent {
+  flex: 1;
+  padding-top: 12px;
+}
+
+.phaseContent h3 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.phaseSteps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.phaseSteps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.phaseSteps li::before {
+  content: '→';
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.techStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Laws */
+.lawCard {
+  padding: 24px;
+}
+
+.lawHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lawHeader h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lawDesc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.lawPenalty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--warning);
+  font-weight: 500;
+}
+
+/* Tech Stack */
+.techCard {
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.techIcon { font-size: 32px; }
+.techName { font-size: 15px; font-weight: 700; }
+.techRole { font-size: 12px; color: var(--text-muted); }
+
+/* CTA */
+.ctaBanner {
+  text-align: center;
+  padding: 64px 40px;
+  background: linear-gradient(135deg, rgba(0, 119, 182, 0.1), rgba(6, 214, 160, 0.06));
+  border: 1px solid rgba(0, 180, 216, 0.2);
+  border-radius: var(--radius-xl);
+  margin-top: 40px;
+}
+
+.ctaBanner h2 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ctaBanner p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 768px) {
+  .mvGrid { grid-template-columns: 1fr; }
+  .processPhase { flex-direction: column; gap: 12px; }
+  .phaseNum { width: auto; display: inline-block; font-size: 24px; padding: 8px 16px; }
+}
