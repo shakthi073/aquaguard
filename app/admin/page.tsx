@@ -7,6 +7,7 @@ import {
   fetchAllComplaints,
   fetchOfficerEmail,
   saveOfficerEmail,
+  validateAdminKey,
   updateComplaintStatus,
   reviewComplaint,
   deleteComplaint,
@@ -51,27 +52,40 @@ export default function AdminPage() {
   }, []);
 
   const loadComplaints = useCallback(async () => {
-    try {
-      setLoadingComplaints(true);
-      setError('');
-      const [data, email] = await Promise.all([
-        fetchAllComplaints(adminKey),
-        fetchOfficerEmail(adminKey),
-      ]);
-      setComplaints(data);
-      setOfficerEmail(email);
-    } catch (err) {
-      if (err instanceof Error && err.message === 'Invalid admin key') {
-        sessionStorage.removeItem('aquaguard_admin_key');
-        setAdminKey('');
-        setAuthenticated(false);
-        setError('Your saved admin key is no longer valid. Please sign in again.');
-        return;
-      }
-      setError('Failed to load complaints.');
-    } finally {
-      setLoadingComplaints(false);
+    setLoadingComplaints(true);
+    setError('');
+    const [complaintResult, emailResult] = await Promise.allSettled([
+      fetchAllComplaints(adminKey),
+      fetchOfficerEmail(adminKey),
+    ]);
+
+    if (complaintResult.status === 'fulfilled') {
+      setComplaints(complaintResult.value);
+    } else {
+      setError(complaintResult.reason instanceof Error
+        ? complaintResult.reason.message
+        : 'Could not load complaints. Check the deployment database configuration.');
     }
+
+    if (emailResult.status === 'fulfilled') {
+      setOfficerEmail(emailResult.value);
+    } else {
+      const settingsError = emailResult.reason instanceof Error
+        ? emailResult.reason.message
+        : 'Could not load officer settings.';
+      setError((current) => current ? `${current} Officer settings: ${settingsError}` : `Officer settings: ${settingsError}`);
+    }
+
+    if ([complaintResult, emailResult].some((result) =>
+      result.status === 'rejected' && result.reason instanceof Error && result.reason.message === 'Invalid admin key'
+    )) {
+      sessionStorage.removeItem('aquaguard_admin_key');
+      setAdminKey('');
+      setAuthenticated(false);
+      setError('Your saved admin key is no longer valid. Please sign in again.');
+    }
+
+    setLoadingComplaints(false);
   }, [adminKey]);
 
   useEffect(() => {
@@ -86,17 +100,12 @@ export default function AdminPage() {
     setLoadingComplaints(true);
     setError('');
     try {
-      const [data, email] = await Promise.all([
-        fetchAllComplaints(candidate),
-        fetchOfficerEmail(candidate),
-      ]);
+      await validateAdminKey(candidate);
       sessionStorage.setItem('aquaguard_admin_key', candidate);
       setAdminKey(candidate);
-      setComplaints(data);
-      setOfficerEmail(email);
       setAuthenticated(true);
-    } catch {
-      setError('Invalid admin key or unable to reach the server.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Admin sign-in failed. Check the deployment configuration.');
     } finally {
       setLoadingComplaints(false);
     }

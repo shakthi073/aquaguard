@@ -8,8 +8,18 @@ export async function fetchAllComplaints(adminKey?: string): Promise<Complaint[]
     headers: adminKey ? { 'x-admin-key': adminKey } : undefined,
   });
   if (res.status === 401) throw new Error('Invalid admin key');
-  if (!res.ok) throw new Error('Failed to load complaints');
+  if (!res.ok) throw new Error(`Could not load complaints (server returned ${res.status})`);
   return res.json();
+}
+
+export async function validateAdminKey(adminKey: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/auth`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'x-admin-key': adminKey },
+  });
+  const payload = await res.json();
+  if (!res.ok) throw new Error(payload.error || `Admin sign-in failed (${res.status})`);
 }
 
 export async function fetchOfficerEmail(adminKey: string): Promise<string> {
@@ -18,7 +28,7 @@ export async function fetchOfficerEmail(adminKey: string): Promise<string> {
     headers: { 'x-admin-key': adminKey },
   });
   const payload = await res.json();
-  if (!res.ok) throw new Error(payload.error || 'Failed to load officer email');
+  if (!res.ok) throw new Error(payload.error || `Could not load officer settings (${res.status})`);
   return payload.officerEmail;
 }
 

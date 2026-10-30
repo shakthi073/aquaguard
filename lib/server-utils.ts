@@ -69,10 +69,10 @@ export async function savePhotoFromBase64(base64: string): Promise<string> {
 }
 
 export function verifyAdminKey(request: Request): boolean {
-  const adminKey = process.env.ADMIN_API_KEY;
+  const adminKey = process.env.ADMIN_API_KEY?.trim();
   if (!adminKey) return false;
-  const headerKey = request.headers.get('x-admin-key');
-  return headerKey === adminKey;
+  const headerKey = request.headers.get('x-admin-key')?.trim();
+  return Boolean(headerKey) && headerKey === adminKey;
 }
 
 /**
