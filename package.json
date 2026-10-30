@@ -1,21 +1,28 @@
 {
-  "name": "water_body_encroachment",
+  "name": "aquaguard",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
+    "dev": "next dev --webpack --port 3000",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.9.0",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.7.0",
     "next": "16.2.2",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^4.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,6 +31,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "prisma": "^6.9.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

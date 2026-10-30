@@ -250,6 +250,15 @@ a:hover {
   width: 100%;
 }
 
+.form-select {
+  color-scheme: dark;
+}
+
+.form-select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
@@ -408,4 +417,22 @@ a:hover {
   .container { padding: 0 16px; }
   .section { padding: 60px 0; }
   .btn-lg { padding: 14px 28px; font-size: 16px; }
+}
+
+/* ===== Skeleton shimmer ===== */
+@keyframes shimmer {
+  0% { background-position: -800px 0; }
+  100% { background-position: 800px 0; }
+}
+
+/* ===== Accessibility ===== */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
 }

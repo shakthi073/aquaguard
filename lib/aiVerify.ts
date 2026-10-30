@@ -1,104 +1,118 @@
-// AI Verification simulation
-// In production: replace this with actual Gemini Vision API call
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { AIVerificationResult, Severity } from './types';
 
-export interface AIVerificationResult {
-  verified: boolean;
-  confidence: number;
-  reasoning: string;
-  detectedFeatures: string[];
-  encroachmentType: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+const PROMPT = `You are an environmental compliance AI analyzing citizen-submitted photos of potential water body encroachment in India.
+
+Analyze the image and the citizen's description. Determine whether the photo shows:
+1. A visible water body (river, lake, pond, canal, wetland, stream, reservoir, etc.)
+2. Evidence of encroachment (illegal construction, waste dumping, land filling, sewage discharge, destructive fishing, etc.)
+
+Respond with ONLY valid JSON (no markdown fences) in this exact shape:
+{
+  "verified": boolean,
+  "confidence": number,
+  "reasoning": string,
+  "detectedFeatures": string[],
+  "encroachmentType": string,
+  "severity": "low" | "medium" | "high" | "critical"
 }
 
-const WATER_FEATURES = ['lake', 'river', 'pond', 'canal', 'stream', 'wetland', 'reservoir', 'water body'];
-const ENCROACHMENT_FEATURES = ['construction', 'waste', 'debris', 'filling', 'sewage', 'pipe', 'garbage', 'building'];
+Rules:
+- verified is true only if BOTH a water body AND encroachment activity are visible or strongly indicated
+- confidence is 0-100
+- detectedFeatures lists specific visual evidence (e.g. "construction debris on riverbank")
+- severity reflects environmental impact and urgency
+- Be conservative: reject unclear, unrelated, or indoor photos`;
+
+function parseSeverity(value: unknown): Severity {
+  if (value === 'low' || value === 'medium' || value === 'high' || value === 'critical') {
+    return value;
+  }
+  return 'medium';
+}
+
+function extractJson(text: string): Record<string, unknown> {
+  const trimmed = text.trim();
+  // Strip markdown code fences if present
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = fenced ? fenced[1].trim() : trimmed;
+  // Find the outermost JSON object in case there is surrounding text
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON object found in AI response');
+  return JSON.parse(jsonMatch[0]);
+}
 
 /**
- * Simulates Gemini Vision API call for water body encroachment detection.
- * In production, this would call:
- * fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent', ...)
+ * Escapes a string for safe use inside HTML email bodies.
  */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export async function analyzeEncroachmentImage(
   imageBase64: string,
   description: string,
-  _coordinates: { lat: number; lng: number }
+  coordinates: { lat: number; lng: number }
 ): Promise<AIVerificationResult> {
-  // Simulate API processing delay
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  // In production, you'd send the image to Gemini Vision API with this prompt:
-  // "Analyze this image for water body encroachment. 
-  //  Check if there's a visible water body (river, lake, pond, canal, wetland).
-  //  Check if there's evidence of encroachment (construction, waste dumping, land filling, sewage discharge).
-  //  Return: verified (boolean), confidence (0-100), detectedFeatures (array), severity (low/medium/high/critical)"
-
-  // Simulated analysis based on description keywords
-  const descLower = description.toLowerCase();
-  const hasWaterKeyword = WATER_FEATURES.some((w) => descLower.includes(w));
-  const hasEncroachmentKeyword = ENCROACHMENT_FEATURES.some((e) => descLower.includes(e));
-
-  // Image is provided and not empty = strong signal
-  const hasImage = !!(imageBase64 && imageBase64.length > 1000);
-
-  const detectedFeatures: string[] = [];
-  let confidence = 60;
-
-  if (hasImage) {
-    detectedFeatures.push('image provided');
-    confidence += 15;
-  }
-  if (hasWaterKeyword) {
-    detectedFeatures.push('water body reference detected');
-    confidence += 12;
-  }
-  if (hasEncroachmentKeyword) {
-    detectedFeatures.push('encroachment indicators found');
-    confidence += 10;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'your-gemini-api-key' || apiKey === '') {
+    // IMPORTANT: return unverified when no API key — never auto-verify
+    console.warn('[AI] GEMINI_API_KEY not set — returning unverified simulation result.');
+    return {
+      verified: false,
+      confidence: 0,
+      reasoning:
+        'AI verification is unavailable (GEMINI_API_KEY not configured). ' +
+        'This report cannot be automatically verified. An administrator will review it manually.',
+      detectedFeatures: [],
+      encroachmentType: 'other',
+      severity: 'medium',
+    };
   }
 
-  // Simulate GPS proximity to known water bodies (would use real geocoding in prod)
-  const nearWaterBody = Math.random() > 0.2;
-  if (nearWaterBody) {
-    detectedFeatures.push('GPS proximity to water body confirmed');
-    confidence += 8;
+  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  if (!base64Data || base64Data.length < 100) {
+    throw new Error('A valid photo is required for AI verification.');
   }
 
-  confidence = Math.min(confidence, 97);
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
 
-  // Determine encroachment type from description
-  let encroachmentType = 'general encroachment';
-  if (descLower.includes('construction') || descLower.includes('building')) encroachmentType = 'illegal construction';
-  else if (descLower.includes('waste') || descLower.includes('garbage') || descLower.includes('dump')) encroachmentType = 'waste dumping';
-  else if (descLower.includes('fill') || descLower.includes('land')) encroachmentType = 'land filling';
-  else if (descLower.includes('sewage') || descLower.includes('drain') || descLower.includes('pipe')) encroachmentType = 'sewage discharge';
+  const context = [
+    `Citizen description: ${description}`,
+    `GPS coordinates: ${coordinates.lat}, ${coordinates.lng}`,
+  ].join('\n');
 
-  // Verify if evidence is strong enough
-  const verified = hasImage && confidence >= 70;
+  const result = await model.generateContent([
+    PROMPT,
+    context,
+    {
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: base64Data,
+      },
+    },
+  ]);
 
-  // Determine severity
-  let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
-  if (confidence >= 90) severity = 'critical';
-  else if (confidence >= 80) severity = 'high';
-  else if (confidence >= 70) severity = 'medium';
-  else severity = 'low';
+  const text = result.response.text();
+  const parsed = extractJson(text);
 
-  // Generate reasoning
-  const reasons: string[] = [];
-  if (hasImage) reasons.push('photographic evidence submitted');
-  if (nearWaterBody) reasons.push('location confirmed near registered water body');
-  if (hasEncroachmentKeyword) reasons.push('description matches encroachment patterns');
-  if (confidence > 80) reasons.push('high confidence in AI analysis');
-
-  const reasoning = verified
-    ? `Encroachment verified with ${confidence}% confidence. Evidence: ${reasons.join(', ')}.`
-    : `Insufficient evidence for verification. Please provide a clearer image showing both the water body and the encroachment activity. Confidence: ${confidence}%.`;
+  const confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 0));
+  const detectedFeatures = Array.isArray(parsed.detectedFeatures)
+    ? parsed.detectedFeatures.map(String)
+    : [];
 
   return {
-    verified,
+    verified: Boolean(parsed.verified),
     confidence,
-    reasoning,
+    reasoning: String(parsed.reasoning || 'Analysis complete.'),
     detectedFeatures,
-    encroachmentType,
-    severity,
+    encroachmentType: String(parsed.encroachmentType || 'general encroachment'),
+    severity: parseSeverity(parsed.severity),
   };
 }

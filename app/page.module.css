@@ -377,6 +377,13 @@
   position: relative;
 }
 
+.emptyFeed {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 32px;
+}
+
 @media (max-width: 900px) {
   .aiSection { grid-template-columns: 1fr; }
   .aiVisual { order: -1; }

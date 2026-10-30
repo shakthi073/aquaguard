@@ -21,6 +21,7 @@ export default function Navbar() {
     { href: '/dashboard', label: 'Map' },
     { href: '/status', label: 'Track Status' },
     { href: '/about', label: 'About' },
+    { href: '/admin', label: 'Officials' },
   ];
 
   return (

@@ -1,16 +1,18 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar/Navbar';
 import Footer from '@/components/Footer/Footer';
 import {
-  getComplaintById,
+  fetchAllComplaints,
+  fetchComplaintById,
   getStatusLabel,
   getStatusColor,
   getSeverityColor,
 } from '@/lib/complaints';
 import type { Complaint, ComplaintStatus } from '@/lib/complaints';
 import styles from './page.module.css';
+
 
 const STATUS_ORDER: ComplaintStatus[] = [
   'filed',
@@ -30,30 +32,88 @@ const SLA_DAYS: Record<ComplaintStatus, number> = {
 
 function StatusContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const [inputId, setInputId] = useState(params.get('id') || '');
   const [complaint, setComplaint] = useState<Complaint | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [requestError, setRequestError] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [exampleIds, setExampleIds] = useState<string[]>([]);
 
+  // Load some examples for quick testing (shows partial IDs for privacy)
   useEffect(() => {
-    const id = params.get('id');
-    if (id) {
-      handleSearch(id);
-    }
+    fetchAllComplaints()
+      .then((list: Complaint[]) => {
+        const ids = list.slice(0, 4).map((c) => c.id);
+        setExampleIds(ids);
+      })
+      .catch(() => {});
   }, []);
 
+
   const handleSearch = (id?: string) => {
-    const searchId = id || inputId;
-    setNotFound(false);
-    setComplaint(null);
-    const found = getComplaintById(searchId.trim().toUpperCase());
-    if (found) {
-      setComplaint(found);
-    } else {
-      setNotFound(true);
-    }
+    const searchId = (id ?? inputId).trim().toUpperCase();
+    if (!searchId) return;
+    router.push(`/status?id=${encodeURIComponent(searchId)}`);
   };
 
-  const currentStatusIdx = complaint ? STATUS_ORDER.indexOf(complaint.status) : -1;
+  const [now, setNow] = useState<number>(0);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const id = params.get('id');
+
+    if (!id) {
+      Promise.resolve().then(() => {
+        if (!isCancelled) {
+          setComplaint(null);
+          setNotFound(false);
+          setRequestError(false);
+          setNow(Date.now());
+        }
+      });
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const searchId = id.trim().toUpperCase();
+    Promise.resolve().then(() => {
+      if (!isCancelled) {
+        setInputId(searchId);
+        setSearching(true);
+        setNotFound(false);
+        setRequestError(false);
+      }
+    });
+
+    fetchComplaintById(searchId)
+      .then((found) => {
+        if (isCancelled) return;
+        if (found) {
+          setComplaint(found);
+          setNotFound(false);
+        } else {
+          setComplaint(null);
+          setNotFound(true);
+        }
+        setNow(Date.now());
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setComplaint(null);
+        setNotFound(false);
+        setRequestError(true);
+      })
+      .finally(() => {
+        if (!isCancelled) setSearching(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [params, retryCount]);
 
   const getExpectedDate = (status: ComplaintStatus, filedDate: string) => {
     const filed = new Date(filedDate);
@@ -66,17 +126,38 @@ function StatusContent() {
   const getSLAStatus = (status: ComplaintStatus, complaint: Complaint) => {
     const idx = STATUS_ORDER.indexOf(status);
     const currentIdx = STATUS_ORDER.indexOf(complaint.status);
-    const expected = getExpectedDate(status, complaint.createdAt);
-    const now = new Date();
+    const deadlineStatus = status === 'filed' ? 'acknowledged' : status;
+    const expected = getExpectedDate(deadlineStatus, complaint.createdAt);
 
+    if (complaint.status === 'resolved') return 'done';
     if (idx < currentIdx) return 'done'; // completed
-    if (idx === currentIdx) return 'current'; // in progress
-    if (now > expected) return 'overdue';
+    if (idx === currentIdx) {
+      if (now > 0 && now > expected.getTime()) return 'overdue';
+      return 'current';
+    }
+    if (now > 0 && now > expected.getTime()) return 'overdue';
     return 'pending';
   };
 
-  const daysElapsed = complaint
-    ? Math.floor((Date.now() - new Date(complaint.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+  const getSLARemainingText = (status: ComplaintStatus, complaint: Complaint) => {
+    const deadlineStatus = status === 'filed' ? 'acknowledged' : status;
+    const expected = getExpectedDate(deadlineStatus, complaint.createdAt);
+    const diffTime = now > 0 ? expected.getTime() - now : 0;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const slaStatus = getSLAStatus(status, complaint);
+    if (slaStatus === 'done') return null;
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} remaining`;
+    } else {
+      const overdueDays = Math.abs(diffDays);
+      return `${overdueDays} day${overdueDays !== 1 ? 's' : ''} overdue`;
+    }
+  };
+
+  const daysElapsed = complaint && now > 0
+    ? Math.floor((now - new Date(complaint.createdAt).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
   const progressPercent = complaint
@@ -95,14 +176,14 @@ function StatusContent() {
           Track Your Complaint
         </h2>
         <p className={styles.searchDesc}>
-          Enter your complaint ID (e.g., WBE-2024-AB123) to view the current status and SLA timeline.
+          Enter your complaint ID (e.g., WBE-2026-AB123) to view the current status and SLA timeline.
         </p>
         <div className={styles.searchRow}>
           <input
             id="input-complaint-id"
             type="text"
             className="form-input"
-            placeholder="WBE-2024-XXXXX"
+            placeholder="WBE-2026-XXXXX"
             value={inputId}
             onChange={(e) => setInputId(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -111,27 +192,30 @@ function StatusContent() {
             id="btn-track-complaint"
             className="btn btn-primary"
             onClick={() => handleSearch()}
+            disabled={searching}
           >
-            Track
+            {searching ? 'Searching...' : 'Track'}
           </button>
         </div>
 
-        {/* Quick examples */}
-        <div className={styles.examples}>
-          <span>Try: </span>
-          {['WBE-2024-AB123', 'WBE-2024-CD456', 'WBE-2024-EF789'].map((id) => (
-            <button
-              key={id}
-              className={styles.exampleBtn}
-              onClick={() => {
-                setInputId(id);
-                handleSearch(id);
-              }}
-            >
-              {id}
-            </button>
-          ))}
-        </div>
+        {exampleIds.length > 0 && (
+          <div className={styles.examples}>
+            <span>Recent reports:</span>
+            {exampleIds.map((id) => (
+              <button
+                key={id}
+                className={styles.exampleBtn}
+                onClick={() => {
+                  setInputId(id);
+                  handleSearch(id);
+                }}
+              >
+                {id}
+              </button>
+            ))}
+          </div>
+        )}
+
       </div>
 
       {/* Not Found */}
@@ -141,6 +225,16 @@ function StatusContent() {
           <h3>Complaint Not Found</h3>
           <p>No complaint found with ID <strong>{inputId}</strong>. Please check the ID and try again.</p>
           <a href="/report" className="btn btn-primary">File a New Complaint</a>
+        </div>
+      )}
+
+      {requestError && (
+        <div className={`glass-card ${styles.notFound}`} role="alert">
+          <h3>Unable to load complaint</h3>
+          <p>There was a problem reaching the tracking service. Your complaint ID has not been rejected.</p>
+          <button className="btn btn-primary" onClick={() => setRetryCount((count) => count + 1)}>
+            Try Again
+          </button>
         </div>
       )}
 
@@ -194,7 +288,8 @@ function StatusContent() {
             <div className={styles.slaTimeline}>
               {STATUS_ORDER.map((status, i) => {
                 const slaStatus = getSLAStatus(status, complaint);
-                const expected = getExpectedDate(status, complaint.createdAt);
+                const deadlineStatus = status === 'filed' ? 'acknowledged' : status;
+                const expected = getExpectedDate(deadlineStatus, complaint.createdAt);
                 const historyEntry = complaint.statusHistory.find((h) => h.status === status);
 
                 return (
@@ -247,6 +342,18 @@ function StatusContent() {
                           ? `Completed: ${new Date(historyEntry.timestamp).toLocaleDateString('en-IN')}`
                           : `Expected: ${expected.toLocaleDateString('en-IN')} (Day ${SLA_DAYS[status]})`}
                       </div>
+                      {(slaStatus === 'current' || slaStatus === 'overdue') && complaint.status !== 'resolved' && (
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            marginTop: '2px',
+                            color: slaStatus === 'overdue' ? 'var(--danger)' : 'var(--primary)',
+                          }}
+                        >
+                          {getSLARemainingText(status, complaint)}
+                        </div>
+                      )}
                       {historyEntry && (
                         <div className={styles.slaNote}>{historyEntry.note}</div>
                       )}
@@ -323,6 +430,24 @@ function StatusContent() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className={`glass-card ${styles.infoCard}`}>
+              <h3>Official Review</h3>
+              <p className={styles.infoDesc}>
+                {complaint.review.status === 'pending'
+                  ? 'This report is awaiting an official review.'
+                  : complaint.review.status === 'verified'
+                    ? 'An official has verified this report.'
+                    : 'An official reviewed this report and found it not substantiated.'}
+              </p>
+              {complaint.review.note && <p className={styles.infoDesc}>{complaint.review.note}</p>}
+              {complaint.review.reviewedAt && (
+                <div className={styles.infoMetaItem}>
+                  <span>Reviewed on</span>
+                  <strong>{new Date(complaint.review.reviewedAt).toLocaleDateString('en-IN', { dateStyle: 'long' })}</strong>
+                </div>
+              )}
             </div>
 
             {/* Location */}

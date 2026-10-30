@@ -1,7 +1,28 @@
+'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './Footer.module.css';
 
 export default function Footer() {
+  const [stats, setStats] = useState({ total: 0, resolved: 0, loading: true });
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setStats({ total: data.total ?? 0, resolved: data.resolved ?? 0, loading: false });
+        } else {
+          setStats((prev) => ({ ...prev, loading: false }));
+        }
+      })
+      .catch(() => {
+        setStats((prev) => ({ ...prev, loading: false }));
+      });
+  }, []);
+
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className={styles.footer}>
       <div className="container">
@@ -22,15 +43,19 @@ export default function Footer() {
               <span>AquaGuard</span>
             </div>
             <p className={styles.tagline}>
-              Protecting India's water bodies through citizen action and AI-powered verification.
+              Protecting India&apos;s water bodies through citizen action and AI-powered verification.
             </p>
             <div className={styles.stats}>
               <div className={styles.stat}>
-                <span className={styles.statNum}>2,847</span>
+                <span className={styles.statNum}>
+                  {stats.loading ? '...' : stats.total.toLocaleString()}
+                </span>
                 <span className={styles.statLabel}>Reports Filed</span>
               </div>
               <div className={styles.stat}>
-                <span className={styles.statNum}>1,203</span>
+                <span className={styles.statNum}>
+                  {stats.loading ? '...' : stats.resolved.toLocaleString()}
+                </span>
                 <span className={styles.statLabel}>Resolved</span>
               </div>
               <div className={styles.stat}>
@@ -54,7 +79,7 @@ export default function Footer() {
             <a href="https://wrd.kerala.gov.in" target="_blank" rel="noreferrer">Water Resources Dept</a>
             <a href="https://cpcb.nic.in" target="_blank" rel="noreferrer">CPCB India</a>
             <a href="https://www.moef.gov.in" target="_blank" rel="noreferrer">MoEF&CC</a>
-            <a href="#laws">Legal Framework</a>
+            <a href="https://ngtnational.nic.in" target="_blank" rel="noreferrer">National Green Tribunal</a>
           </div>
 
           <div className={styles.linkGroup}>
@@ -75,11 +100,11 @@ export default function Footer() {
         </div>
 
         <div className={styles.bottom}>
-          <p>© 2024 AquaGuard. Built for a cleaner, safer India. 🇮🇳</p>
+          <p>© {currentYear} AquaGuard. Built for a cleaner, safer India. 🇮🇳</p>
           <div className={styles.bottomLinks}>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Use</a>
-            <a href="#">Contact</a>
+            <a href="/about">Privacy Policy</a>
+            <a href="/about">Terms of Use</a>
+            <a href="mailto:support@aquaguard.example.com">Contact</a>
           </div>
         </div>
       </div>

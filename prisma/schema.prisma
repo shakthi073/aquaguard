@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum ComplaintStatus {
+  filed
+  acknowledged
+  investigating
+  action_taken
+  resolved
+}
+
+enum EncroachmentType {
+  construction
+  waste_dumping
+  land_filling
+  sewage_discharge
+  illegal_fishing
+  other
+}
+
+enum Severity {
+  low
+  medium
+  high
+  critical
+}
+
+enum ReviewStatus {
+  pending
+  verified
+  rejected
+}
+
+model Complaint {
+  id                 String           @id
+  status             ComplaintStatus  @default(filed)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  photoPath          String
+  lat                Float
+  lng                Float
+  address            String
+  city               String
+  state              String
+  description        String
+  encroachmentType   EncroachmentType
+  severity           Severity         @default(medium)
+  aiVerified         Boolean
+  aiConfidence       Int
+  aiReasoning        String
+  aiDetectedFeatures String
+  reporterName       String
+  reporterEmail      String
+  reporterPhone      String           @default("")
+  reviewStatus       ReviewStatus     @default(pending)
+  reviewNote         String           @default("")
+  reviewedAt         DateTime?
+  statusHistory      StatusHistory[]
+}
+
+model StatusHistory {
+  id          String          @id @default(cuid())
+  complaintId String
+  complaint   Complaint       @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  status      ComplaintStatus
+  timestamp   DateTime        @default(now())
+  note        String
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

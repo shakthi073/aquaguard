@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { RefreshCw } from 'lucide-react';
 import Navbar from '@/components/Navbar/Navbar';
 import Footer from '@/components/Footer/Footer';
-import { getAllComplaints, getStatusColor, getStatusLabel, getSeverityColor } from '@/lib/complaints';
-import type { Complaint } from '@/lib/complaints';
+import { fetchAllComplaints, getStatusColor, getStatusLabel, getSeverityColor } from '@/lib/complaints';
+import type { Complaint, ComplaintStatus } from '@/lib/complaints';
 import styles from './page.module.css';
 
 interface MapViewProps {
@@ -21,10 +22,30 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<Complaint | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [loadingComplaints, setLoadingComplaints] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const refreshComplaints = useCallback(async () => {
+    setRefreshing(true);
+    setLoadError('');
+    try {
+      const data = await fetchAllComplaints();
+      setComplaints(data);
+      setSelected((current) => current ? data.find((item) => item.id === current.id) ?? null : null);
+    } catch {
+      setLoadError('Could not refresh reports. Showing the last loaded data.');
+    } finally {
+      setLoadingComplaints(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setComplaints(getAllComplaints());
-  }, []);
+    void refreshComplaints();
+    const intervalId = window.setInterval(() => void refreshComplaints(), 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [refreshComplaints]);
 
   const filteredComplaints = complaints.filter((c) => {
     const matchesFilter = filter === 'all' || c.status === filter;
@@ -62,13 +83,20 @@ export default function DashboardPage() {
                 Real-time map of all reported water body encroachments across India.
               </p>
             </div>
-            <a href="/report" className="btn btn-primary">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              New Report
-            </a>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => void refreshComplaints()} disabled={refreshing} aria-label="Refresh reports" title="Refresh reports">
+                <RefreshCw size={17} aria-hidden="true" />
+              </button>
+              <a href="/report" className="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Report
+              </a>
+            </div>
           </div>
+
+          {loadError && <p role="alert" style={{ color: 'var(--danger)', marginBottom: '16px' }}>{loadError}</p>}
 
           {/* Stats Bar */}
           <div className={styles.statsBar}>
@@ -100,13 +128,13 @@ export default function DashboardPage() {
                   id="input-search-complaints"
                 />
                 <div className={styles.filterBtns}>
-                  {['all', 'filed', 'acknowledged', 'investigating', 'resolved'].map((f) => (
+                  {['all', 'filed', 'acknowledged', 'investigating', 'action_taken', 'resolved'].map((f) => (
                     <button
                       key={f}
                       className={`${styles.filterBtn} ${filter === f ? styles.filterBtnActive : ''}`}
                       onClick={() => setFilter(f)}
                     >
-                      {f === 'all' ? 'All' : getStatusLabel(f as any)}
+                      {f === 'all' ? 'All' : getStatusLabel(f as ComplaintStatus)}
                     </button>
                   ))}
                 </div>
@@ -114,15 +142,28 @@ export default function DashboardPage() {
 
               {/* Complaint List */}
               <div className={styles.complaintList}>
-                {filteredComplaints.length === 0 ? (
+                {loadingComplaints ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '8px' }}>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} style={{
+                        height: '100px',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'linear-gradient(90deg, rgba(0,180,216,0.05) 25%, rgba(0,180,216,0.12) 50%, rgba(0,180,216,0.05) 75%)',
+                        backgroundSize: '800px 100%',
+                        animation: 'shimmer 1.4s infinite',
+                      }} />
+                    ))}
+                  </div>
+                ) : filteredComplaints.length === 0 ? (
                   <div className={styles.empty}>
                     <span>🔍</span>
                     <p>No complaints found</p>
                   </div>
                 ) : (
                   filteredComplaints.map((c) => (
-                    <div
+                    <button
                       key={c.id}
+                      type="button"
                       className={`${styles.complaintItem} ${selected?.id === c.id ? styles.complaintItemActive : ''}`}
                       onClick={() => setSelected(c)}
                     >
@@ -143,7 +184,9 @@ export default function DashboardPage() {
                       <div className={styles.itemLocation}>
                         📍 {c.location.city}, {c.location.state}
                       </div>
-                      <div className={styles.itemDesc}>{c.description.slice(0, 80)}...</div>
+                      <div className={styles.itemDesc}>
+                        {c.description.length > 80 ? `${c.description.slice(0, 80)}...` : c.description}
+                      </div>
                       <div className={styles.itemMeta}>
                         <span style={{ color: getSeverityColor(c.severity), fontSize: '11px', fontWeight: '600' }}>
                           {c.severity.toUpperCase()}
@@ -152,7 +195,7 @@ export default function DashboardPage() {
                           {new Date(c.createdAt).toLocaleDateString('en-IN')}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -214,6 +257,15 @@ export default function DashboardPage() {
               </div>
 
               <div className={styles.detailBody}>
+                {selected.photo && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={selected.photo}
+                    alt="Evidence"
+                    className={styles.detailPhoto}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
                 <div className={styles.detailDesc}>{selected.description}</div>
                 <div className={styles.detailMeta}>
                   <div className={styles.detailMetaItem}>

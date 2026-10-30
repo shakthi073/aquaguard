@@ -1,24 +1,39 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar/Navbar';
 import Footer from '@/components/Footer/Footer';
 import styles from './page.module.css';
-import { getAllComplaints, getStatusColor, getStatusLabel } from '@/lib/complaints';
+import { fetchAllComplaints, getStatusColor, getStatusLabel } from '@/lib/complaints';
+import type { Complaint } from '@/lib/complaints';
 
 export default function HomePage() {
   const [counts, setCounts] = useState({ total: 0, resolved: 0, pending: 0, areas: 0 });
-  const [recentComplaints, setRecentComplaints] = useState<any[]>([]);
+  const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const complaints = getAllComplaints();
-    const resolved = complaints.filter((c) => c.status === 'resolved').length;
-    const pending = complaints.filter((c) => c.status !== 'resolved').length;
-    const uniqueStates = new Set(complaints.map((c) => c.location.state)).size;
-
-    setCounts({ total: complaints.length, resolved, pending, areas: uniqueStates });
-    setRecentComplaints(complaints.slice(0, 3));
+    // Fetch stats and recent complaints in parallel using optimised endpoints
+    Promise.all([
+      fetch('/api/stats').then((r) => r.ok ? r.json() : { total: 0, resolved: 0, pending: 0, areas: 0 }),
+      fetchAllComplaints(),
+    ])
+      .then(([stats, complaints]) => {
+        setCounts({
+          total: stats.total ?? 0,
+          resolved: stats.resolved ?? 0,
+          pending: stats.pending ?? 0,
+          areas: stats.areas ?? 0,
+        });
+        setRecentComplaints(complaints.slice(0, 3));
+      })
+      .catch(() => {
+        setCounts({ total: 0, resolved: 0, pending: 0, areas: 0 });
+        setRecentComplaints([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
 
   return (
     <>
@@ -39,7 +54,7 @@ export default function HomePage() {
           </div>
 
           <h1 className={styles.heroTitle}>
-            Protect India's
+            Protect India&apos;s
             <br />
             <span className={styles.heroGradient}>Water Bodies</span>
             <br />
@@ -70,10 +85,10 @@ export default function HomePage() {
           {/* Stats Row */}
           <div className={styles.statsRow}>
             {[
-              { num: counts.total || 2847, label: 'Reports Filed', icon: '📋', color: 'var(--primary)' },
-              { num: counts.resolved || 1203, label: 'Cases Resolved', icon: '✅', color: 'var(--accent)' },
-              { num: counts.pending || 1644, label: 'Under Review', icon: '🔍', color: 'var(--warning)' },
-              { num: counts.areas || 18, label: 'States Covered', icon: '📍', color: 'var(--accent-orange)' },
+              { num: counts.total, label: 'Reports Filed', icon: '📋', color: 'var(--primary)' },
+              { num: counts.resolved, label: 'Cases Resolved', icon: '✅', color: 'var(--accent)' },
+              { num: counts.pending, label: 'Under Review', icon: '🔍', color: 'var(--warning)' },
+              { num: counts.areas, label: 'States Covered', icon: '📍', color: 'var(--accent-orange)' },
             ].map((stat, i) => (
               <div key={i} className={styles.statCard}>
                 <span className={styles.statIcon}>{stat.icon}</span>
@@ -174,7 +189,12 @@ export default function HomePage() {
           </div>
 
           <div className="grid-3">
-            {recentComplaints.map((c) => (
+            {loading ? (
+              <p className={styles.emptyFeed}>Loading reports...</p>
+            ) : recentComplaints.length === 0 ? (
+              <p className={styles.emptyFeed}>No reports yet. Be the first to file one.</p>
+            ) : (
+            recentComplaints.map((c) => (
               <div key={c.id} className={`glass-card ${styles.complaintCard}`}>
                 <div className={styles.cardHeader}>
                   <span className={styles.cardId}>{c.id}</span>
@@ -195,7 +215,9 @@ export default function HomePage() {
                   </svg>
                   {c.location.city}, {c.location.state}
                 </div>
-                <p className={styles.cardDesc}>{c.description.slice(0, 100)}...</p>
+                <p className={styles.cardDesc}>
+                  {c.description.length > 100 ? `${c.description.slice(0, 100)}...` : c.description}
+                </p>
                 <div className={styles.cardFooter}>
                   <div className={styles.aiScore}>
                     <span>AI Confidence</span>
@@ -209,7 +231,8 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
 
           <div className={styles.viewAll}>
@@ -238,11 +261,11 @@ export default function HomePage() {
               </p>
               <ul className={styles.aiFeatures}>
                 {[
-                  'Detects 8+ types of water bodies',
-                  'Identifies 6 encroachment categories',
-                  'Cross-verifies GPS with satellite imagery',
-                  '94% verified report accuracy',
-                  'Processes results in under 5 seconds',
+                  'Detects rivers, lakes, ponds, wetlands, and canals',
+                  'Identifies construction, dumping, filling, and sewage encroachment',
+                  'Uses GPS coordinates with reverse geocoding',
+                  'Conservative verification to reduce false reports',
+                  'Results returned in seconds via Gemini Vision',
                 ].map((f, i) => (
                   <li key={i} className={styles.aiFeature}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5">
@@ -264,11 +287,11 @@ export default function HomePage() {
                 <div className={styles.aiOutput}>
                   <div className={styles.aiLine}><span className={styles.aiKey}>status:</span> <span style={{ color: 'var(--accent)' }}>✓ VERIFIED</span></div>
                   <div className={styles.aiLine}><span className={styles.aiKey}>confidence:</span> <span style={{ color: 'var(--primary)' }}>94%</span></div>
-                  <div className={styles.aiLine}><span className={styles.aiKey}>water_body:</span> <span style={{ color: 'var(--warning)' }}>"river"</span></div>
-                  <div className={styles.aiLine}><span className={styles.aiKey}>encroachment:</span> <span style={{ color: 'var(--warning)' }}>"construction"</span></div>
-                  <div className={styles.aiLine}><span className={styles.aiKey}>severity:</span> <span style={{ color: 'var(--danger)' }}>"critical"</span></div>
+                  <div className={styles.aiLine}><span className={styles.aiKey}>water_body:</span> <span style={{ color: 'var(--warning)' }}>&quot;river&quot;</span></div>
+                  <div className={styles.aiLine}><span className={styles.aiKey}>encroachment:</span> <span style={{ color: 'var(--warning)' }}>&quot;construction&quot;</span></div>
+                  <div className={styles.aiLine}><span className={styles.aiKey}>severity:</span> <span style={{ color: 'var(--danger)' }}>&quot;critical&quot;</span></div>
                   <div className={styles.aiLine}><span className={styles.aiKey}>gps_verified:</span> <span style={{ color: 'var(--accent)' }}>true</span></div>
-                  <div className={styles.aiLine}><span className={styles.aiKey}>action:</span> <span style={{ color: 'var(--accent)' }}>"notifying_pcb"</span></div>
+                  <div className={styles.aiLine}><span className={styles.aiKey}>action:</span> <span style={{ color: 'var(--accent)' }}>&quot;notifying_pcb&quot;</span></div>
                   <div className={`${styles.aiLine} ${styles.aiCursor}`}><span className={styles.aiKey}>&gt;</span> <span className={styles.blinking}>_</span></div>
                 </div>
               </div>
@@ -283,7 +306,7 @@ export default function HomePage() {
           <div className={styles.ctaInner}>
             <div className={styles.ctaRipple}></div>
             <h2>Every Water Body Deserves Protection</h2>
-            <p>Join thousands of citizens safeguarding India's rivers, lakes, and wetlands.</p>
+            <p>Join thousands of citizens safeguarding India&apos;s rivers, lakes, and wetlands.</p>
             <div className={styles.ctaBtns}>
               <Link href="/report" className="btn btn-primary btn-lg">
                 Report an Encroachment
